@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ExternalLink, 
@@ -8,96 +8,61 @@ import {
   Gamepad2,
   Wrench,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Palette
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
-const apps = [
-  {
-    id: 1,
-    name: 'Pixel Paint',
-    category: 'Yaratıcılık',
-    icon: Palette,
-    description: 'Basit ve sezgisel bir piksel art çizim uygulaması. Yaratıcılığınızı konuşturun!',
-    fullDescription: `Pixel Paint, piksel art çizmek için tasarlanmış modern ve kullanıcı dostu bir uygulamadır. 
-    
-Özellikler:
-• Çok katmanlı çizim desteği
-• Özelleştirilebilir renk paleti
-• İçe/dışa aktar (PNG, JPG)
-• Dokunmatik ve kalem desteği
-• Sınırsız geri alma/yineleme
-• Grid ve ızgara yardımcıları`,
-    rating: 4.7,
-    downloads: '500+',
-    status: 'Beta Test',
-    color: 'from-pink-500 to-rose-500',
-    screenshots: 4,
-    playStoreUrl: '#',
-  },
-  {
-    id: 2,
-    name: 'Word Rush',
-    category: 'Oyun',
-    icon: Gamepad2,
-    description: 'Zamana karşı yarışarak kelimeleri bulun! Eğlenceli ve bağımlılık yapıcı kelime oyunu.',
-    fullDescription: `Word Rush, kelime bilginizi test eden hızlı tempolu bir kelime oyunudur.
-
-Özellikler:
-• 1000+ seviye
-• Günlük görevler ve ödüller
-• Liderlik tablosu
-• Başarım sistemi
-• Çevrimdışı oynama
-• İngilizce ve Türkçe desteği`,
-    rating: 4.5,
-    downloads: '300+',
-    status: 'Beta Test',
-    color: 'from-blue-500 to-cyan-500',
-    screenshots: 4,
-    playStoreUrl: '#',
-  },
-  {
-    id: 3,
-    name: 'Task Master',
-    category: 'Üretkenlik',
-    icon: Wrench,
-    description: 'Görevlerinizi organize edin, verimliliğinizi artırın. Minimalist yapılacaklar listesi.',
-    fullDescription: `Task Master, günlük görevlerinizi yönetmek için tasarlanmış güçlü bir üretkenlik uygulamasıdır.
-
-Özellikler:
-• Kategori bazlı görev yönetimi
-• Hatırlatıcı ve bildirimler
-• İlerleme takibi
-• Widget desteği
-• Bulut senkronizasyonu
-• Özelleştirilebilir temalar`,
-    rating: 4.8,
-    downloads: '200+',
-    status: 'Beta Test',
-    color: 'from-green-500 to-emerald-500',
-    screenshots: 4,
-    playStoreUrl: '#',
-  },
-];
-
-import { Palette } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog'; // Yol hatası alırsan @/components/ui/dialog yap
+import { db } from './firebaseConfig';
+import { collection, getDocs } from 'firebase/firestore';
 
 export default function Apps() {
-  const [selectedApp, setSelectedApp] = useState<typeof apps[0] | null>(null);
+  const [apps, setApps] = useState<any[]>([]);
+  const [selectedApp, setSelectedApp] = useState<any | null>(null);
   const [currentScreenshot, setCurrentScreenshot] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // Firebase'den Verileri Çek
+  useEffect(() => {
+    const fetchApps = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "applications"));
+        const data = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setApps(data);
+        setLoading(false);
+      } catch (error) {
+        console.error("Veri çekme hatası:", error);
+        setLoading(false);
+      }
+    };
+    fetchApps();
+  }, []);
 
   const nextScreenshot = () => {
     if (selectedApp) {
-      setCurrentScreenshot((prev) => (prev + 1) % selectedApp.screenshots);
+      setCurrentScreenshot((prev) => (prev + 1) % (selectedApp.screenshots || 1));
     }
   };
 
   const prevScreenshot = () => {
     if (selectedApp) {
-      setCurrentScreenshot((prev) => (prev - 1 + selectedApp.screenshots) % selectedApp.screenshots);
+      setCurrentScreenshot((prev) => (prev - 1 + (selectedApp.screenshots || 1)) % (selectedApp.screenshots || 1));
     }
   };
+
+  // Kategoriye göre ikon belirleme yardımcı fonksiyonu
+  const getIcon = (category: string) => {
+    switch (category?.toLowerCase()) {
+      case 'oyun': return Gamepad2;
+      case 'üretkenlik': return Wrench;
+      case 'yaratıcılık': return Palette;
+      default: return Smartphone;
+    }
+  };
+
+  if (loading) return <div className="py-24 text-center text-white">Yükleniyor...</div>;
 
   return (
     <section id="apps" className="py-24 relative">
@@ -117,206 +82,100 @@ export default function Apps() {
             Play Store'daki Uygulamalarım
           </h2>
           <p className="text-lg text-white/60 max-w-3xl mx-auto">
-            Kullanıcıların günlük hayatlarına değer katan, özenle geliştirilmiş 
-            Android uygulamalarımı keşfedin.
+            Kullanıcıların günlük hayatlarına değer katan, bulut veritabanı ile güncellenen Android uygulamalarımı keşfedin.
           </p>
         </motion.div>
 
         {/* Apps grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {apps.map((app, index) => (
-            <motion.div
-              key={app.id}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="group"
-            >
-              <div className="glass rounded-2xl overflow-hidden card-hover h-full flex flex-col">
-                {/* App icon area */}
-                <div className={`h-48 bg-gradient-to-br ${app.color} relative overflow-hidden`}>
-                  <div className="absolute inset-0 bg-black/20" />
-                  <motion.div
-                    className="absolute inset-0 flex items-center justify-center"
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="w-24 h-24 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                      <app.icon className="w-12 h-12 text-white" />
+          {apps.map((app, index) => {
+            const IconComponent = getIcon(app.category);
+            return (
+              <motion.div
+                key={app.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="group"
+              >
+                <div className="glass rounded-2xl overflow-hidden card-hover h-full flex flex-col bg-white/5 border border-white/10">
+                  {/* App icon area */}
+                  <div className={`h-48 bg-gradient-to-br from-blue-600 to-purple-600 relative overflow-hidden`}>
+                    <img src={app.image} alt={app.title} className="absolute inset-0 w-full h-full object-cover opacity-50" />
+                    <div className="absolute inset-0 bg-black/20" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
+                        <IconComponent className="w-10 h-10 text-white" />
+                      </div>
                     </div>
-                  </motion.div>
-                  
-                  {/* Status badge */}
-                  <div className="absolute top-4 right-4">
-                    <span className="px-3 py-1 rounded-full bg-black/30 backdrop-blur-sm text-white text-xs">
-                      {app.status}
-                    </span>
+                  </div>
+
+                  {/* App info */}
+                  <div className="p-6 flex-1 flex flex-col">
+                    <h3 className="text-xl font-bold text-white mb-1">{app.title}</h3>
+                    <span className="text-sm text-white/50 mb-3">{app.category}</span>
+                    <p className="text-white/60 text-sm mb-4 flex-1">{app.description}</p>
+
+                    {/* Buttons */}
+                    <div className="flex gap-3 mt-auto">
+                      <button
+                        onClick={() => setSelectedApp(app)}
+                        className="flex-1 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-all"
+                      >
+                        Detaylar
+                      </button>
+                      <a
+                        href={app.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-all"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </div>
                   </div>
                 </div>
-
-                {/* App info */}
-                <div className="p-6 flex-1 flex flex-col">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="text-xl font-bold text-white mb-1">{app.name}</h3>
-                      <span className="text-sm text-white/50">{app.category}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-white/60 text-sm mb-4 flex-1">
-                    {app.description}
-                  </p>
-
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 mb-4 text-sm">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                      <span className="text-white/70">{app.rating}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Download className="w-4 h-4 text-white/50" />
-                      <span className="text-white/70">{app.downloads}</span>
-                    </div>
-                  </div>
-
-                  {/* Buttons */}
-                  <div className="flex gap-3">
-                    <motion.button
-                      onClick={() => {
-                        setSelectedApp(app);
-                        setCurrentScreenshot(0);
-                      }}
-                      className="flex-1 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-all"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      Detaylar
-                    </motion.button>
-                    <motion.a
-                      href={app.playStoreUrl}
-                      className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:opacity-90 transition-all"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </motion.a>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
-
-        {/* Coming soon */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="mt-16 text-center"
-        >
-          <div className="glass rounded-2xl p-8 inline-block">
-            <div className="flex items-center justify-center gap-3 mb-3">
-              <Smartphone className="w-6 h-6 text-purple-400" />
-              <span className="text-white font-semibold">Yakında</span>
-            </div>
-            <p className="text-white/60">
-              Yeni uygulamalar üzerinde çalışıyorum. Takipte kalın!
-            </p>
-          </div>
-        </motion.div>
       </div>
 
-      {/* App Detail Modal */}
+      {/* Detay Modalı */}
       <Dialog open={!!selectedApp} onOpenChange={() => setSelectedApp(null)}>
         <DialogContent className="max-w-3xl bg-[#0f172a] border-white/10 text-white max-h-[90vh] overflow-y-auto">
           {selectedApp && (
             <>
               <DialogHeader>
                 <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${selectedApp.color} flex items-center justify-center`}>
-                    <selectedApp.icon className="w-6 h-6 text-white" />
-                  </div>
-                  {selectedApp.name}
+                  <img src={selectedApp.image} className="w-12 h-12 rounded-xl object-cover" alt="" />
+                  {selectedApp.title}
                 </DialogTitle>
               </DialogHeader>
 
-              <div className="mt-4">
-                {/* Screenshot carousel */}
-                <div className="relative mb-6">
-                  <div className="aspect-video bg-white/5 rounded-xl overflow-hidden">
-                    <div className={`w-full h-full bg-gradient-to-br ${selectedApp.color} opacity-30 flex items-center justify-center`}>
-                      <div className="text-center">
-                        <selectedApp.icon className="w-16 h-16 text-white/50 mx-auto mb-2" />
-                        <span className="text-white/50">Ekran Görüntüsü {currentScreenshot + 1}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {selectedApp.screenshots > 1 && (
-                    <>
-                      <button
-                        onClick={prevScreenshot}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-all"
-                      >
-                        <ChevronLeft className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={nextScreenshot}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-all"
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
-                    </>
-                  )}
-
-                  {/* Dots */}
-                  <div className="flex justify-center gap-2 mt-3">
-                    {Array.from({ length: selectedApp.screenshots }).map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setCurrentScreenshot(i)}
-                        className={`w-2 h-2 rounded-full transition-all ${
-                          i === currentScreenshot ? 'bg-purple-500 w-6' : 'bg-white/30'
-                        }`}
-                      />
-                    ))}
-                  </div>
+              <div className="mt-4 space-y-6">
+                <div className="aspect-video rounded-xl overflow-hidden bg-white/5">
+                   <img src={selectedApp.image} className="w-full h-full object-contain" alt="Preview" />
                 </div>
 
-                {/* Stats */}
-                <div className="flex gap-6 mb-6">
-                  <div className="flex items-center gap-2">
-                    <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                    <span className="text-white font-semibold">{selectedApp.rating}</span>
-                    <span className="text-white/50">Puan</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Download className="w-5 h-5 text-white/50" />
-                    <span className="text-white font-semibold">{selectedApp.downloads}</span>
-                    <span className="text-white/50">İndirme</span>
-                  </div>
-                </div>
-
-                {/* Description */}
                 <div className="prose prose-invert max-w-none">
-                  <pre className="whitespace-pre-wrap text-white/70 font-sans text-sm leading-relaxed">
-                    {selectedApp.fullDescription}
-                  </pre>
+                  <h4 className="text-white/50 text-sm uppercase">Açıklama</h4>
+                  <p className="text-white/80 leading-relaxed whitespace-pre-wrap">
+                    {selectedApp.description}
+                  </p>
                 </div>
 
-                {/* CTA */}
-                <div className="mt-6 flex gap-3">
-                  <motion.a
-                    href={selectedApp.playStoreUrl}
-                    className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold text-center hover:opacity-90 transition-all flex items-center justify-center gap-2"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                <div className="flex gap-3">
+                  <a
+                    href={selectedApp.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 px-6 py-3 rounded-xl bg-blue-600 text-white font-semibold text-center hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
                   >
                     <ExternalLink className="w-5 h-5" />
-                    Play Store'da Gör
-                  </motion.a>
+                    Uygulamaya Git
+                  </a>
                 </div>
               </div>
             </>
