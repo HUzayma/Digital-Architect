@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 
 const Apps = () => {
   const [apps, setApps] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchApps = async () => {
-      const querySnapshot = await getDocs(collection(db, "apps"));
-      const appsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setApps(appsData);
+      try {
+        const querySnapshot = await getDocs(collection(db, "apps"));
+        const appsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setApps(appsData);
+      } catch (e) {
+        console.error("Hata:", e);
+      }
     };
     fetchApps();
   }, []);
@@ -23,7 +26,6 @@ const Apps = () => {
           {apps.map((app) => (
             <div key={app.id} className="bg-slate-800 p-6 rounded-lg">
               <h3 className="text-2xl font-semibold mb-2">{app.name}</h3>
-              <p className="text-slate-400">{app.description}</p>
             </div>
           ))}
         </div>

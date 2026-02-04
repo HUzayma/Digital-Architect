@@ -1,19 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { db } from '../firebaseConfig';
-import { collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 
 const AdminPanel = () => {
   const [appName, setAppName] = useState('');
 
   const handleAddApp = async (e: React.FormEvent) => {
     e.preventDefault();
-    await addDoc(collection(db, "apps"), { name: appName });
-    setAppName('');
-    alert("Uygulama eklendi!");
+    try {
+      await addDoc(collection(db, "apps"), { name: appName });
+      setAppName('');
+      alert("Başarıyla eklendi!");
+    } catch (e) {
+      alert("Hata oluştu.");
+    }
   };
 
   return (
-    <div className="p-10 bg-white text-black">
+    <div className="p-10 bg-white text-black min-h-screen">
       <h1 className="text-2xl font-bold mb-5">Admin Paneli</h1>
       <form onSubmit={handleAddApp}>
         <input 
